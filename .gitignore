@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# 缓存、日志与生成物
+.cache/
+*.log
+research/output/
+tests/shots/
+
+# 扩展签名私钥（公钥在 extension_key.b64 与 manifest.json 中，可以公开）
+*.pem
+
+# 编辑器与系统文件
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

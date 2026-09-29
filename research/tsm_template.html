@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="__LANG__">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__ · 分层淡化</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1b1b1d; --muted: #6b6b70; --line: #e4e2dc;
+    --bar: rgba(251, 250, 247, .94); --accent: #2f5bd3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17171a; --fg: #ededf0; --muted: #9a9aa2; --line: #2c2c31;
+      --bar: rgba(23, 23, 26, .94); --accent: #8aa8ff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17171a; --fg: #ededf0; --muted: #9a9aa2; --line: #2c2c31;
+    --bar: rgba(23, 23, 26, .94); --accent: #8aa8ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 18px/1.9 "Noto Serif SC", "Source Han Serif SC", Georgia, "Songti SC", serif;
+  }
+  .bar {
+    position: sticky; top: 0; z-index: 2; background: var(--bar); backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line); padding: 10px 16px;
+    font: 13px/1.4 system-ui, -apple-system, "PingFang SC", sans-serif; color: var(--muted);
+  }
+  .bar-inner { max-width: 740px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 11px; font: inherit; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .legend { display: inline-flex; gap: 8px; align-items: center; }
+  .legend i { font-style: normal; color: var(--fg); }
+  main { max-width: 740px; margin: 0 auto; padding: 28px 16px 120px; }
+  h1 { font-size: 30px; line-height: 1.3; margin: 8px 0 6px; }
+  .meta { font: 13px/1.6 system-ui, sans-serif; color: var(--muted); margin-bottom: 28px; }
+  h2 { font-size: 23px; margin: 40px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  h3 { font-size: 19px; margin: 28px 0 6px; }
+  h4 { font-size: 17px; margin: 22px 0 4px; }
+  p { margin: 0 0 14px; }
+  .mode-plain span { opacity: 1 !important; }
+  .mode-core span.f { display: none; }
+  @media (max-width: 560px) { body { font-size: 17px; } }
+</style>
+</head>
+<body>
+<div class="bar"><div class="bar-inner">
+  <span class="seg" id="mode">
+    <button data-v="tsm">分层淡化</button><button data-v="core">只看核心层</button><button data-v="plain">原文</button>
+  </span>
+  <span class="legend">层级
+    <i style="opacity:1">核心</i><i style="opacity:.8">细节</i><i style="opacity:.65">细节</i><i style="opacity:.5">最次要</i>
+  </span>
+</div></div>
+<main id="root">
+  <h1 id="title"></h1>
+  <div class="meta" id="meta"></div>
+  <div id="doc"></div>
+</main>
+<script type="application/json" id="data">__DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let mode = 'tsm';
+try { mode = localStorage.getItem('tsm-mode') || 'tsm'; } catch (e) {}
+
+const out = [];
+for (const item of DATA.doc) {
+  if (item.h) { const l = Math.min(item.l, 4); out.push(`<h${l}>${esc(item.h)}</h${l}>`); continue; }
+  let h = '';
+  for (const units of item.s)
+    for (const [t, a] of units)
+      h += a < 1 ? `<span class="f" style="opacity:${a}">${esc(t)}</span>` : `<span>${esc(t)}</span>`;
+  out.push(`<p>${h}</p>`);
+}
+$('doc').innerHTML = out.join('');
+
+function apply() {
+  $('root').className = 'mode-' + mode;
+  document.querySelectorAll('#mode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === mode));
+  try { localStorage.setItem('tsm-mode', mode); } catch (e) {}
+}
+document.querySelectorAll('#mode button').forEach(b => b.onclick = () => { mode = b.dataset.v; apply(); });
+apply();
+
+const m = DATA.meta, j = m.jev || {};
+$('title').textContent = m.title;
+$('meta').textContent =
+  `${m.sentences} 句，其中 ${m.faded_sentences} 句有淡化 · 核心层保留 ${(m.core_ratio * 100).toFixed(0)}% ` +
+  `· 生成本页：Jev ${j.full_requests ?? 0} 个请求，${j.full_input_tokens ?? 0} 输入 token，费用 $${(j.full_cost || 0).toFixed(5)}`;
+</script>
+</body>
+</html>

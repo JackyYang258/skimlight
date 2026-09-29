@@ -1,0 +1,77 @@
+{
+  "title": "美国宪法第十四修正案",
+  "lang": "zh",
+  "sentences": 255,
+  "candidates": 2814,
+  "blocks": 59,
+  "results": [
+    {
+      "variant": "jev-full",
+      "first_s": 0.41263091799919493,
+      "total_s": 2.9772023189998436,
+      "cost_usd": 0.024744299999999993,
+      "input_tokens": 589150,
+      "output_tokens": 60143,
+      "overlap_vs_jev_full": 1.0,
+      "valid_rate": 1.0,
+      "runs": [
+        {
+          "first": 0.41263091799919493,
+          "total": 2.9772023189998436,
+          "cost": 0.024744299999999993
+        }
+      ]
+    },
+    {
+      "variant": "jev-compact",
+      "first_s": 0.2582367899995006,
+      "total_s": 2.3510371089996625,
+      "cost_usd": 0.004378625999999999,
+      "input_tokens": 104253,
+      "output_tokens": 60143,
+      "overlap_vs_jev_full": 0.7680446194225716,
+      "valid_rate": 1.0,
+      "runs": [
+        {
+          "first": 0.2582367899995006,
+          "total": 2.3510371089996625,
+          "cost": 0.004378625999999999
+        }
+      ]
+    },
+    {
+      "variant": "llm:google/gemini-2.5-flash-lite",
+      "first_s": 0.6777787079990958,
+      "total_s": 6.0089889760001824,
+      "cost_usd": 0.0055563,
+      "input_tokens": 32487,
+      "output_tokens": 5769,
+      "overlap_vs_jev_full": 0.5567585301837269,
+      "valid_rate": 0.99581589958159,
+      "runs": [
+        {
+          "first": 0.6777787079990958,
+          "total": 6.0089889760001824,
+          "cost": 0.0055563
+        }
+      ]
+    },
+    {
+      "variant": "llm:deepseek/deepseek-v4-flash",
+      "first_s": 1.3756388000001607,
+      "total_s": 24.773911652000606,
+      "cost_usd": 0.0044639038,
+      "input_tokens": 28633,
+      "output_tokens": 4117,
+      "overlap_vs_jev_full": 0.5291994750656169,
+      "valid_rate": 0.8845654993514915,
+      "runs": [
+        {
+          "first": 1.3756388000001607,
+          "total": 24.773911652000606,
+          "cost": 0.0044639038
+        }
+      ]
+    }
+  ]
+}

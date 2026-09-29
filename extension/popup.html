@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --fg: #1d1d1f; --muted: #6b6b70; --line: #e4e2dc; --bg: #ffffff; --tile: #f6f5f2;
+    --accent: #2f5bd3; --bar: #2f5bd3; --track: #e9e7e1; --warn: #b54708; --err: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #ececef; --muted: #9a9aa2; --line: #34343a; --bg: #1c1c1f; --tile: #26262a;
+      --accent: #8aa8ff; --bar: #3a7fd9; --track: #34343a; --warn: #f5a524; --err: #ff7a6e;
+    }
+  }
+  body { margin: 0; width: 320px; background: var(--bg); color: var(--fg); font: 13px/1.5 system-ui, "PingFang SC", sans-serif; }
+  .wrap { padding: 12px 14px; }
+  h1 { font-size: 14px; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  h1 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
+  h2 { font-size: 12px; font-weight: 600; margin: 0 0 6px; color: var(--muted); }
+  #toggle { width: 100%; padding: 8px; border: 0; border-radius: 7px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  #toggle.off { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  #toggle:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 9px 0; }
+  .row input[type=range] { flex: 1; accent-color: var(--accent); }
+  output { width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 10px 0; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .err { color: var(--err); font-size: 12px; }
+  label { display: flex; align-items: center; gap: 6px; }
+  kbd { font: 11px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* 费用统计 */
+  .today { display: flex; justify-content: space-between; align-items: baseline; }
+  .today b { font-size: 18px; }
+  .meter { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; margin: 4px 0 2px; }
+  .meter i { display: block; height: 100%; width: 0; background: var(--bar); border-radius: 3px; }
+  .meter.warn i { background: var(--warn); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+  .tile { background: var(--tile); border-radius: 6px; padding: 5px 7px; }
+  .tile div:first-child { color: var(--muted); font-size: 11px; }
+  .tile div:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .chart { position: relative; height: 56px; display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid var(--line); }
+  .chart .col { flex: 1; height: 100%; display: flex; align-items: flex-end; cursor: default; }
+  .chart .col i { display: block; width: 100%; background: var(--bar); border-radius: 4px 4px 0 0; min-height: 0; }
+  .chart .col.zero i { height: 1px !important; background: var(--line); border-radius: 0; }
+  .chart .col:hover i { filter: brightness(1.15); }
+  .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .tip { position: absolute; bottom: 100%; transform: translate(-50%, -4px); background: var(--fg); color: var(--bg);
+         font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; display: none; }
+  .sites { margin: 4px 0 0; padding: 0; list-style: none; }
+  .sites li { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .sites li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Skimlight <span class="muted" id="page"></span></h1>
+  <button id="toggle">开启本页</button>
+  <div class="muted" id="progress" style="margin-top:6px"></div>
+  <label style="margin-top:8px"><input type="checkbox" id="auto"> 在此网站自动开启</label>
+  <hr>
+  <div class="row">阈值 <input type="range" id="th" min="0.2" max="0.95" step="0.05"><output id="thv"></output></div>
+  <div class="row">密度 <input type="range" id="ratio" min="0.1" max="0.6" step="0.05"><output id="ratiov"></output></div>
+  <label><input type="checkbox" id="dim"> 调浅其余文字</label>
+  <label><input type="checkbox" id="mark"> 关键词加底色</label>
+  <label><input type="checkbox" id="neg"> 标出否定词</label>
+  <label title="默认只处理屏幕附近的段落，滚动时继续；勾选后开启时一次处理整页，费用更高"><input type="checkbox" id="fullPage"> 一次处理整页（费用更高）</label>
+  <hr>
+  <section id="stats" hidden>
+    <h2>费用统计</h2>
+    <div class="muted" id="pageCost"></div>
+    <div class="today" style="margin-top:4px"><span>今日 <b class="num" id="todayCost"></b></span><span class="muted num" id="budget"></span></div>
+    <div class="meter" id="meter" role="meter" aria-label="今日费用占每日上限的比例"><i></i></div>
+    <div class="muted num" id="todayDetail"></div>
+    <div class="tiles">
+      <div class="tile"><div>近 7 天</div><div id="d7"></div></div>
+      <div class="tile"><div>近 30 天</div><div id="d30"></div></div>
+      <div class="tile"><div>累计</div><div id="dall"></div></div>
+    </div>
+    <h2>近 14 天每日费用</h2>
+    <div class="chart" id="chart" role="img"><div class="tip" id="tip"></div></div>
+    <div class="axis"><span id="axisStart"></span><span id="axisMax"></span><span>今日</span></div>
+    <div id="sitesBox" hidden>
+      <h2 style="margin-top:10px">近 30 天各网站</h2>
+      <ul class="sites" id="sites"></ul>
+    </div>
+    <hr>
+  </section>
+  <div class="muted" id="host">正在连接本地程序…</div>
+  <div class="muted">快捷键 <kbd>Alt</kbd>+<kbd>J</kbd>（可在 chrome://extensions/shortcuts 修改）</div>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>

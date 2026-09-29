@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="__LANG__">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__ · 速读标注</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1d1d1f; --dim: #1d1d1f; --dim-alpha: .42;
+    --hl: #1d1d1f; --hl-bg: rgba(255, 214, 102, .38); --neg: #b42318;
+    --muted: #6b6b70; --line: #e4e2dc; --bar: rgba(251, 250, 247, .94); --accent: #2f5bd3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17171a; --fg: #ececef; --dim: #ececef; --dim-alpha: .40;
+      --hl: #ffffff; --hl-bg: rgba(255, 196, 61, .22); --neg: #ff7a6e;
+      --muted: #9a9aa2; --line: #2c2c31; --bar: rgba(23, 23, 26, .94); --accent: #8aa8ff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17171a; --fg: #ececef; --dim: #ececef; --dim-alpha: .40;
+    --hl: #ffffff; --hl-bg: rgba(255, 196, 61, .22); --neg: #ff7a6e;
+    --muted: #9a9aa2; --line: #2c2c31; --bar: rgba(23, 23, 26, .94); --accent: #8aa8ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 18px/1.95 "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  }
+  .bar {
+    position: sticky; top: 0; z-index: 2; background: var(--bar); backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line); padding: 10px 16px;
+    font: 13px/1.4 system-ui, -apple-system, "PingFang SC", sans-serif; color: var(--muted);
+  }
+  .bar-inner { max-width: 760px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button {
+    border: 0; background: transparent; color: var(--muted); padding: 5px 11px; font: inherit; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  input[type=range] { width: 92px; accent-color: var(--accent); }
+  output { min-width: 2.6em; font-variant-numeric: tabular-nums; color: var(--fg); }
+  .stat { margin-left: auto; font-variant-numeric: tabular-nums; }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 16px 120px; }
+  h1 { font-size: 30px; line-height: 1.3; margin: 8px 0 6px; }
+  .meta { font: 13px/1.6 system-ui, sans-serif; color: var(--muted); margin-bottom: 28px; }
+  h2 { font-size: 23px; margin: 40px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  h3 { font-size: 19px; margin: 28px 0 6px; }
+  h4 { font-size: 17px; margin: 22px 0 4px; }
+  p { margin: 0 0 14px; }
+  .dim p { color: color-mix(in srgb, var(--dim) calc(var(--dim-alpha) * 100%), transparent); }
+  .k { color: var(--hl); font-weight: 650; }
+  .k.w1 { font-weight: 600; } .k.w2 { font-weight: 700; } .k.w3 { font-weight: 800; }
+  .mark .k { background: var(--hl-bg); border-radius: 3px; padding: 0 1px; }
+  .k.neg { color: var(--neg); }
+  .k[data-p]:hover { outline: 1px dashed var(--accent); }
+  @media (max-width: 560px) { body { font-size: 17px; } .stat { margin-left: 0; width: 100%; } }
+</style>
+</head>
+<body>
+<div class="bar"><div class="bar-inner">
+  <span class="seg" id="mode">
+    <button data-v="jev">Jev</button><button data-v="tfidf">TF-IDF</button><button data-v="off">原文</button>
+  </span>
+  <label title="Jev 概率低于该值的词不标注">阈值 <input id="th" type="range" min="0.2" max="0.95" step="0.05"><output id="thv"></output></label>
+  <label title="每句最多标注的比例（相对候选词数）">密度 <input id="ratio" type="range" min="0.1" max="0.6" step="0.05"><output id="ratiov"></output></label>
+  <label><input id="dim" type="checkbox"> 弱化其余文字</label>
+  <label><input id="mark" type="checkbox"> 底色</label>
+  <label><input id="neg" type="checkbox"> 否定词</label>
+  <span class="stat" id="stat"></span>
+</div></div>
+<main id="root">
+  <h1 id="title"></h1>
+  <div class="meta" id="meta"></div>
+  <div id="doc"></div>
+</main>
+<script type="application/json" id="data">__DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const KMAX = 4;
+const defaults = { mode: DATA.meta.model ? 'jev' : 'tfidf', th: 0.5, ratio: 0.3, dim: true, mark: false, neg: true };
+let S = { ...defaults };
+try { Object.assign(S, JSON.parse(localStorage.getItem('skimlight-report') || '{}')); } catch (e) {}
+if (!DATA.meta.model && S.mode === 'jev') S.mode = 'tfidf';
+
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function pick(units) {
+  // units: [text, kind(0 普通 / 1 候选 / 2 否定), p, tf]
+  const chosen = new Set();
+  if (S.mode === 'off') return chosen;
+  const cands = [];
+  units.forEach((u, i) => { if (u[1] === 1) cands.push(i); });
+  const k = cands.length ? Math.min(KMAX, Math.max(1, Math.round(cands.length * S.ratio))) : 0;
+  let pool;
+  if (S.mode === 'jev') pool = cands.filter(i => units[i][2] != null && units[i][2] >= S.th).sort((a, b) => units[b][2] - units[a][2]);
+  else pool = cands.slice().sort((a, b) => units[b][3] - units[a][3]);
+  const seen = new Set();   // 同一句内相同的词只标一次
+  for (const i of pool) {
+    if (seen.size >= k) break;
+    if (seen.has(units[i][0])) continue;
+    seen.add(units[i][0]); chosen.add(i);
+  }
+  if (S.neg) units.forEach((u, i) => { if (u[1] === 2) chosen.add(i); });
+  return chosen;
+}
+
+function render() {
+  let total = 0, hl = 0, sents = 0, words = 0;
+  const out = [];
+  for (const item of DATA.doc) {
+    if (item.h) { out.push(`<h${Math.min(item.l, 4)}>${esc(item.h)}</h${Math.min(item.l, 4)}>`); continue; }
+    let html = '';
+    for (const units of item.s) {
+      sents++;
+      const chosen = pick(units);
+      units.forEach((u, i) => {
+        total += u[0].length;
+        if (!chosen.has(i)) { html += esc(u[0]); return; }
+        hl += u[0].length; words++;
+        const w = S.mode === 'jev' && u[2] != null ? (u[2] >= 0.85 ? 3 : u[2] >= 0.7 ? 2 : 1) : 2;
+        const tip = u[1] === 2 ? '否定词（规则）' : `Jev p=${u[2] ?? '—'} · TF-IDF=${u[3]}`;
+        html += `<b class="k w${w}${u[1] === 2 ? ' neg' : ''}" data-p title="${tip}">${esc(u[0])}</b>`;
+      });
+    }
+    out.push(`<p>${html}</p>`);
+  }
+  $('doc').innerHTML = out.join('');
+  $('root').classList.toggle('dim', S.dim && S.mode !== 'off');
+  $('root').classList.toggle('mark', S.mark);
+  $('stat').textContent = S.mode === 'off' ? '' :
+    `标注 ${(100 * hl / total).toFixed(1)}% 字符 · 每句 ${(words / sents).toFixed(2)} 个`;
+  document.querySelectorAll('#mode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.mode));
+  $('th').value = S.th; $('thv').value = S.th.toFixed(2); $('th').disabled = S.mode !== 'jev';
+  $('ratio').value = S.ratio; $('ratiov').value = S.ratio.toFixed(2);
+  $('dim').checked = S.dim; $('mark').checked = S.mark; $('neg').checked = S.neg;
+  try { localStorage.setItem('skimlight-report', JSON.stringify(S)); } catch (e) {}
+}
+
+document.querySelectorAll('#mode button').forEach(b => {
+  if (b.dataset.v === 'jev' && !DATA.meta.model) b.disabled = true;
+  b.onclick = () => { S.mode = b.dataset.v; render(); };
+});
+$('th').oninput = e => { S.th = +e.target.value; render(); };
+$('ratio').oninput = e => { S.ratio = +e.target.value; render(); };
+['dim', 'mark', 'neg'].forEach(id => $(id).onchange = e => { S[id] = e.target.checked; render(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 't' && DATA.meta.model) { S.mode = S.mode === 'jev' ? 'tfidf' : 'jev'; render(); }
+});
+
+const m = DATA.meta;
+$('title').textContent = m.title;
+$('meta').textContent = `${m.sentences} 句 · ${m.candidates} 个候选词` +
+  (m.model ? ` · ${m.model} · ${m.jev_requests} 个请求 · ${m.jev.full_input_tokens} 输入 token · 生成本页费用 $${(m.jev.full_cost || 0).toFixed(5)}` : ' · 仅 TF-IDF') +
+  ' · 按 t 在 Jev 与 TF-IDF 之间切换';
+render();
+</script>
+</body>
+</html>

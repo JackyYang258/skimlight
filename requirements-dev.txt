@@ -1,0 +1,3 @@
+# 测试（scripts/e2e_test.py）；安装后运行 python -m playwright install chromium
+-r requirements.txt
+playwright==1.63.0

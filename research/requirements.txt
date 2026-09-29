@@ -1,0 +1,4 @@
+# 研究代码（对比实验、分层淡化方案）额外需要
+-r ../requirements.txt
+wordfreq==3.1.1
+zh_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.8.0/zh_core_web_sm-3.8.0-py3-none-any.whl
