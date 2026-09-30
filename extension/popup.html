@@ -28,6 +28,9 @@
   .muted { color: var(--muted); font-size: 12px; }
   .err { color: var(--err); font-size: 12px; }
   label { display: flex; align-items: center; gap: 6px; }
+  .setkey { width: 100%; padding: 7px; margin-bottom: 8px; border: 1px solid var(--err); border-radius: 7px;
+            background: transparent; color: var(--err); font: inherit; font-weight: 600; cursor: pointer; }
+  a { color: var(--accent); }
   kbd { font: 11px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
   .num { font-variant-numeric: tabular-nums; }
 
@@ -88,8 +91,9 @@
     </div>
     <hr>
   </section>
+  <button id="setKey" class="setkey" hidden>填写 API key</button>
   <div class="muted" id="host">正在连接本地程序…</div>
-  <div class="muted">快捷键 <kbd>Alt</kbd>+<kbd>J</kbd>（可在 chrome://extensions/shortcuts 修改）</div>
+  <div class="muted">快捷键 <kbd>Alt</kbd>+<kbd>J</kbd>（可在 chrome://extensions/shortcuts 修改）· <a href="#" id="openOptions">设置</a></div>
 </div>
 <script src="popup.js"></script>
 </body>

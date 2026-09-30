@@ -8,13 +8,13 @@ Skimlight is a Chrome extension that highlights the key words of each sentence i
 
 The word choices come from [Jev](https://typesafe.ai), TypeSafe AI's decision model, called through [OpenRouter](https://openrouter.ai). Jev does not generate text. It returns a calibrated yes/no probability for each candidate word. Skimlight is an independent project and is not affiliated with TypeSafe AI or OpenRouter.
 
-> **Status: early prototype.** The only installer today targets Windows + WSL2 + Chrome. A native Windows installer, an options page for the API key, and macOS/Linux support are on the roadmap below.
+> **Status: early prototype.** Windows + Chrome only for now. macOS/Linux host registration is on the roadmap below.
 
 ## How it works
 
 1. **Extract the article (in the page).** The content script locates the main content container, collects paragraph text, and keeps a per-character map back to the DOM text nodes. It skips navigation, headers, footers, code blocks and math.
 2. **Process only what you read.** An `IntersectionObserver` sends only paragraphs within about 1.5 screens of the viewport. Very long blocks, such as essays that use `<br>` instead of `<p>`, are split into parts, and each part is sent when it comes into view.
-3. **Generate candidates (local host).** A Python host process connected through Chrome Native Messaging splits sentences and tokenizes them: jieba for Chinese, spaCy for English. It then builds candidate units: noun phrases, content verbs and adjectives, and numbers. Negations such as `don't know` and `不生效` are always marked by rule.
+3. **Generate candidates (local host).** A Python host process connected through Chrome Native Messaging splits sentences and tokenizes them. Chinese uses jieba with part-of-speech tags. English uses a small rule-based tokenizer written with the standard library, with stopwords, proper-noun and number phrases, and lowercase noun compounds. It then builds candidate units: noun phrases, content words and numbers. Negations such as `don't know` and `不生效` are always marked by rule.
 4. **Score candidates with Jev.** Each candidate becomes one Noul question (`Key word in s3: "lead"?`). The judging criteria are written once in the request `state`, so each question costs about 18 input tokens. Paragraphs are batched, about 2,000 characters per request for English and 1,200 for Chinese.
 5. **Render (in the page).** For each sentence, the extension keeps the top *k* candidates, where *k* ≈ 30% of the candidates (1 to 4) and *p* ≥ the threshold. It draws them with the [CSS Custom Highlight API](https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API) and inserts no DOM nodes, so turning it off restores the page exactly.
 
@@ -34,39 +34,34 @@ Because only the paragraphs you scroll to are sent, what you actually pay is usu
 
 ## Requirements
 
-- Windows 10/11 with WSL2. The current installer runs the host inside WSL.
+- Windows 10/11 (x64)
 - Chrome 111 or later
-- Python 3.10+ inside WSL
-- An [OpenRouter](https://openrouter.ai) API key
+- An API key from [OpenRouter](https://openrouter.ai/keys) (recommended) or [TypeSafe](https://console.typesafe.ai)
 
-## Install (Windows + WSL)
+## Install (Windows)
 
-Run these inside WSL:
+1. Download `Skimlight-<version>-windows-x64.zip` from the [Releases](https://github.com/JackyYang258/skimlight/releases) page, or build it yourself (see [Development](#development)).
+2. Unzip it anywhere and double-click **`install.cmd`**. It copies the files to `%LOCALAPPDATA%\Programs\Skimlight` and registers the native messaging host for the current user under `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.skimlight.host`. No administrator rights are needed, and no separate Python installation is needed because the package bundles its own Python 3.12. The zip is about 16 MB and about 45 MB after installation.
+3. In Chrome, open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose `%LOCALAPPDATA%\Programs\Skimlight\extension`. The installer copies this path to the clipboard.
+4. The settings page opens. Choose a provider, paste your API key, click **Test connection** and then **Save**.
+
+To open the settings page later, click **设置** at the bottom of the popup, or right-click the toolbar icon and choose **Options**. The key is saved by the local host in `%LOCALAPPDATA%\Skimlight\data\config.json`. It is not stored in the browser and is not synced.
+
+To uninstall, close Chrome, double-click **`uninstall.cmd`**, and remove the extension in `chrome://extensions`. Settings and cache stay in `%LOCALAPPDATA%\Skimlight\data` until you delete that folder.
+
+### Developer install (WSL)
+
+For working on the code, the host can run from a WSL checkout instead of the bundled Python:
 
 ```bash
 git clone https://github.com/JackyYang258/skimlight.git
 cd skimlight
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-
-mkdir -p ~/.config/skimlight
-cat > ~/.config/skimlight/config.json <<'EOF'
-{ "api_key": "sk-or-...", "daily_budget_usd": 0.5 }
-EOF
-chmod 600 ~/.config/skimlight/config.json
-
-bash scripts/install_windows.sh
+bash scripts/install_windows.sh      # copies the extension to %LOCALAPPDATA%\Skimlight\extension, host runs via wsl.exe
 ```
 
-The install script copies the extension to `%LOCALAPPDATA%\Skimlight\extension`. It also registers the native messaging host under `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.skimlight.host`.
-
-Then, in Chrome:
-
-1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and choose `%LOCALAPPDATA%\Skimlight\extension`.
-3. Reload any pages that were already open.
-
-To uninstall, run `bash scripts/uninstall_windows.sh` and remove the extension in `chrome://extensions`.
+Then load `%LOCALAPPDATA%\Skimlight\extension` in Chrome. In this mode the config lives in WSL at `~/.config/skimlight/config.json`. Both install methods register the same host name, so whichever you run last is the one Chrome uses.
 
 ## Usage
 
@@ -81,7 +76,7 @@ To uninstall, run `bash scripts/uninstall_windows.sh` and remove the extension i
 
 ## What is sent where
 
-When Skimlight is enabled on a page, the text of the visible paragraphs is sent to the local host. From there it goes to OpenRouter, which routes it to TypeSafe's Jev. Nothing is sent while Skimlight is off. The local cache stores offsets and probabilities keyed by a hash of the text, not the text itself.
+When Skimlight is enabled on a page, the text of the visible paragraphs is sent to the local host. From there it goes to the provider you chose: OpenRouter, which routes it to TypeSafe's Jev, or TypeSafe directly. Nothing is sent while Skimlight is off. The local cache stores offsets and probabilities keyed by a hash of the text, not the text itself.
 
 ## Quality
 
@@ -101,11 +96,16 @@ The set is small and was labeled by one person. Repeated runs vary by about 3–
 extension/            Chrome extension (Manifest V3)
   content.js          article extraction, lazy processing, Custom Highlight rendering
   background.js       native messaging connection, keyboard command
-  popup.html/.js      toggle, per-site auto-enable, settings, spend
+  popup.html/.js      toggle, per-site auto-enable, display settings, cost statistics
+  options.html/.js    settings page: provider, API key, daily cap, connection test
 host/
-  skimlight_host.py   native messaging host: segmentation, Jev calls, SQLite cache, daily cap
-skimlight/reader.py   segmentation and candidate generation (jieba / spaCy), Jev question format
-scripts/              Windows install/uninstall, host self-test, Playwright end-to-end test
+  skimlight_host.py   native messaging host: segmentation, Jev calls, SQLite cache, daily cap, config
+skimlight/reader.py   Chinese segmentation and candidates (jieba), Jev question format
+skimlight/english.py  English sentence splitting and candidates (standard library only)
+scripts/
+  build_windows.sh    builds the Windows package (dist/Skimlight-<version>-windows-x64.zip)
+  install_windows.sh  developer install through WSL
+  host_selftest.py, e2e_test.py   tests
 tests/pages/          local test page
 research/             experiments that shaped the design (not needed at runtime)
 ```
@@ -121,22 +121,28 @@ research/             experiments that shaped the design (not needed at runtime)
 .venv/bin/python scripts/e2e_test.py https://example.com/some-article   # or real pages
 ```
 
-Both tests call Jev and need a configured API key. Host logs are in `~/.cache/skimlight/host.log`.
+Both tests call Jev and need a configured API key. Host logs are in `~/.cache/skimlight/host.log`, or `%LOCALAPPDATA%\Skimlight\data\host.log` for the Windows package.
 
 After changing the extension, run `bash scripts/install_windows.sh` again and click **Reload** on the extension in `chrome://extensions`.
+
+To build the Windows package, run the script below on Linux or WSL. It needs no Windows Python, because pip downloads the `win_amd64` wheels:
+
+```bash
+bash scripts/build_windows.sh     # → dist/Skimlight-<version>-windows-x64.zip (about 16 MB)
+```
 
 ## Known limitations
 
 - **Article detection:** it is heuristic, so some sites include author or affiliation blocks, or miss parts of the article.
 - **Chinese segmentation:** jieba can split technical terms and mixed Chinese/English identifiers incorrectly.
-- **First-toggle delay:** the first toggle after starting Chrome takes 2–4 s while the host loads its models.
+- **English candidates:** they come from rules, not a parser, so they are coarser than a full NLP pipeline. For example, noun compounds are merged by heuristics. On the labeled set, word choices matched the earlier spaCy version (precision@k 98% vs 96%) with about 14% more candidates.
+- **First-toggle delay:** the first toggle after starting Chrome takes 1–2 s while the host starts and loads the jieba dictionary.
 - **No PDF support yet:** Chrome's built-in PDF viewer cannot be modified by extensions.
 
 ## Roadmap
 
-- Native Windows installer (PyInstaller + Inno Setup) without WSL
-- Options page for the API key and provider (OpenRouter or TypeSafe directly)
 - macOS and Linux host registration
+- Signed `.exe` installer
 - Chrome Web Store release
 - PDF reading page based on pdf.js
 - Unit tests with a mocked Jev and CI

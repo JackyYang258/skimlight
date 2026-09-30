@@ -122,4 +122,5 @@ def main():
         print(f"{name:34s} {r['en'][0]:6.0%}{spread(r['en']):>12s} {r['zh'][0]:6.0%}{spread(r['zh']):>12s} {r['en'][1]:9.1f} {r['zh'][1]:9.1f}")
 
 
-main()
+if __name__ == "__main__":
+    main()

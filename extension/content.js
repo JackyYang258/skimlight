@@ -224,9 +224,10 @@
       if (r) { b.res = r; if (enabled) renderBlock(b); continue; }
       b.requested = false;
       b.retries = (b.retries || 0) + 1;
-      if (b.retries <= MAX_RETRIES) { failed++; setTimeout(() => enabled && enqueue(b), 2000 * b.retries); }
+      if (b.retries <= MAX_RETRIES && !resp?.need_key) { failed++; setTimeout(() => enabled && enqueue(b), 2000 * b.retries); }
     }
-    if (resp?.error) toast(`Skimlight：${resp.error}${failed ? `（${failed} 段稍后重试）` : ''}`, 8000);
+    if (resp?.need_key) chrome.runtime.sendMessage({ type: 'need_key' }).catch(() => {});
+    if (resp?.error) toast(`Skimlight：${resp.error}${failed && !resp.need_key ? `（${failed} 段稍后重试）` : ''}`, 8000);
     else if (!inflight && !queue.size) toast(statusText(), 1500);
     if (queue.size) flush();
   }

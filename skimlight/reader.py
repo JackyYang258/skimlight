@@ -25,7 +25,6 @@ from pathlib import Path
 
 import httpx
 import jieba
-import jieba.analyse
 import jieba.posseg as pseg
 
 jieba.setLogLevel(60)
@@ -301,6 +300,7 @@ def tfidf_scorer_en(all_text):
 # ---------- TF-IDF 对照 ----------
 
 def tfidf_scorer(all_text):
+    import jieba.analyse   # 只有 TF-IDF 对照需要；本地程序不导入，安装包可省去该模块
     idf, median = jieba.analyse.default_tfidf.idf_loader.get_idf()
     counts = Counter(w for w in jieba.cut(all_text))
     total = sum(counts.values())

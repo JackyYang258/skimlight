@@ -1,5 +1,3 @@
-# 本地程序（host/skimlight_host.py）运行所需
+# 本地程序（host/skimlight_host.py）运行所需；英文处理用标准库实现（skimlight/english.py），不需要 spaCy
 jieba==0.42.1
 httpx==0.28.1
-spacy==3.8.16
-en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

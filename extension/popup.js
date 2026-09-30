@@ -124,13 +124,17 @@ async function init() {
   $('ratio').oninput = (e) => { S.ratio = +e.target.value; $('ratiov').value = S.ratio.toFixed(2); save(); };
   for (const id of ['dim', 'mark', 'neg', 'fullPage']) $(id).onchange = (e) => { S[id] = e.target.checked; save(); };
 
+  $('openOptions').onclick = (e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); };
+  $('setKey').onclick = () => chrome.runtime.openOptionsPage();
   const ping = await chrome.runtime.sendMessage({ type: 'ping' });
+  const hostEl = $('host');
   if (ping?.ok) {
-    $('host').innerHTML = '本地程序已连接' + (ping.has_key ? '' : ' · <span class="err">未配置 API key</span>');
+    hostEl.textContent = `本地程序已连接 · ${ping.provider === 'typesafe' ? 'TypeSafe' : 'OpenRouter'}`;
+    $('setKey').hidden = ping.has_key;
     refreshStats();
   } else {
-    $('host').innerHTML = `<span class="err">本地程序未连接：${ping?.error || ping?.lastError || '未知错误'}</span>` +
-      '<br>请参考 README 安装本地程序';
+    hostEl.innerHTML = '<span class="err"></span><br>请先安装 Skimlight 本地程序，见设置页中的说明。';
+    hostEl.querySelector('.err').textContent = `本地程序未连接：${ping?.error || ping?.lastError || '未知错误'}`;
   }
   let tick = 0;
   setInterval(async () => {

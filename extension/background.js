@@ -47,7 +47,22 @@ async function recordUsage(usage) {
   await chrome.storage.local.set({ stats: s });
 }
 
+// 读写配置只接受扩展自身页面（设置页、弹出面板）的请求；网页中的内容脚本不能读写 API key
+const CONFIG_TYPES = new Set(['get_config', 'set_config', 'test_key']);
+const fromExtensionPage = (sender) => sender.id === chrome.runtime.id && (sender.url || '').startsWith(chrome.runtime.getURL(''));
+let optionsOpened = false;   // 缺少 API key 时，每次浏览器会话最多自动打开一次设置页
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (CONFIG_TYPES.has(msg.type)) {
+    if (!fromExtensionPage(sender)) return false;
+    const { id, ...rest } = msg;
+    callHost(rest).then(sendResponse);
+    return true;
+  }
+  if (msg.type === 'need_key') {
+    if (!optionsOpened) { optionsOpened = true; chrome.runtime.openOptionsPage(); }
+    return false;
+  }
   if (msg.type === 'highlight') {
     callHost({ type: 'highlight', page: msg.page, blocks: msg.blocks }).then((resp) => {
       recordUsage(resp.usage);
@@ -74,4 +89,11 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command !== 'toggle-jev') return;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: 'toggle' }).catch(() => {});
+});
+
+// 首次安装：本地程序未安装或未配置 API key 时打开设置页
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  if (reason !== 'install') return;
+  const r = await callHost({ type: 'ping' });
+  if (!r?.ok || !r.has_key) chrome.runtime.openOptionsPage();
 });

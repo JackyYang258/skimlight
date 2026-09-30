@@ -17,6 +17,7 @@ export PYTHONPATH=. OPENROUTER_API_KEY=sk-or-...
 | `experiments/billing.py` | Measures how Jev bills input tokens (per-request overhead, state counted once, per-question cost) |
 | `experiments/word_formats.py` | Precision@k vs token cost of word-level question formats on a hand-labeled set; the chosen format (F4s) comes from here |
 | `experiments/formats.py`, `experiments/costopt.py` | Same analysis for the sentence-compression variant |
+| `experiments/english_light.py` | spaCy vs the standard-library English candidate rules now used by the host (`skimlight/english.py`): precision@k 96% vs 98%, 107 vs 122 candidates, cost +8%. Dropping spaCy shrank the Windows package from 58 MB to 16 MB. |
 | `tsm.py` | Alternative design: grammar-preserving layered fading (GP-TSM style) with Jev as the judge; not used by the extension |
 
 Main findings / 主要结论:
