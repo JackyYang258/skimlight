@@ -14,6 +14,14 @@ function usd(v) {
   return `$${v.toFixed(2)}`;
 }
 const int = (n) => (n || 0).toLocaleString('zh-CN');
+// 把 Chrome 的 Native Messaging 错误翻译成可操作的建议
+function hostErrorHint(err = '') {
+  if (/not found/i.test(err)) return '找不到本地程序的注册信息：请重新运行 install.cmd（Windows 安装包）或 scripts/install_windows.sh（WSL）。';
+  if (/forbidden/i.test(err)) return '本地程序不允许此扩展连接：请重新运行 install.cmd，并从安装目录中的 extension 文件夹加载扩展。';
+  if (/exited|disconnected|断开/i.test(err)) return '本地程序启动后退出：请重新运行 install.cmd；如仍失败，查看 %LOCALAPPDATA%\\Skimlight\\data\\host.log。';
+  return '请先安装 Skimlight 本地程序。';
+}
+
 
 function showSettings() {
   $('th').value = S.th; $('thv').value = S.th.toFixed(2);
@@ -133,8 +141,10 @@ async function init() {
     $('setKey').hidden = ping.has_key;
     refreshStats();
   } else {
-    hostEl.innerHTML = '<span class="err"></span><br>请先安装 Skimlight 本地程序，见设置页中的说明。';
-    hostEl.querySelector('.err').textContent = `本地程序未连接：${ping?.error || ping?.lastError || '未知错误'}`;
+    const err = ping?.error || ping?.lastError || '未知错误';
+    hostEl.innerHTML = '<span class="err"></span><br><span class="hint"></span>';
+    hostEl.querySelector('.err').textContent = `本地程序未连接：${err}`;
+    hostEl.querySelector('.hint').textContent = hostErrorHint(err);
   }
   let tick = 0;
   setInterval(async () => {

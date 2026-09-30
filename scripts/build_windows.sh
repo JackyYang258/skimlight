@@ -72,10 +72,18 @@ $Dest = Join-Path $env:LOCALAPPDATA 'Programs\Skimlight'
 Write-Host ''
 Write-Host 'Skimlight 安装' -ForegroundColor Cyan
 if ($Src.TrimEnd('\') -ne $Dest.TrimEnd('\')) {
+    # Chrome 运行时会占用已安装的 python.exe，覆盖安装前先确认本地程序没有在运行
+    $Running = Get-Process -Name python -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$Dest\*" }
+    if ($Running) {
+        Write-Host 'Chrome 正在使用 Skimlight 本地程序，无法覆盖安装。' -ForegroundColor Red
+        Write-Host '请完全退出 Chrome（包括系统托盘中的后台进程）后重新运行 install.cmd。'
+        exit 1
+    }
     Write-Host "复制文件到 $Dest ..."
     New-Item -ItemType Directory -Force -Path $Dest | Out-Null
-    robocopy $Src $Dest /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
-    if ($LASTEXITCODE -ge 8) { throw '复制失败：Chrome 可能正在使用 Skimlight。请关闭 Chrome 后重新运行 install.cmd。' }
+    # /MIR 会删除目标中多出的文件：排除安装时生成的描述文件与 Python 缓存；/R /W 避免遇到被占用文件时长时间重试
+    robocopy $Src $Dest /MIR /XF "$Name.json" /XD __pycache__ /R:2 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -ge 8) { throw '复制失败：部分文件被占用。请完全退出 Chrome 后重新运行 install.cmd。' }
 }
 
 $Bat = Join-Path $Dest 'skimlight_host.bat'

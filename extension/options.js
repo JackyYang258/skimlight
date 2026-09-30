@@ -5,6 +5,14 @@ const KEY_PAGES = {
 };
 const INSTALL_URL = 'https://github.com/JackyYang258/skimlight#install';
 let cfg = null;
+// 把 Chrome 的 Native Messaging 错误翻译成可操作的建议
+function hostErrorHint(err = '') {
+  if (/not found/i.test(err)) return '找不到本地程序的注册信息：请重新运行 install.cmd（Windows 安装包）或 scripts/install_windows.sh（WSL）。';
+  if (/forbidden/i.test(err)) return '本地程序不允许此扩展连接：请重新运行 install.cmd，并从安装目录中的 extension 文件夹加载扩展。';
+  if (/exited|disconnected|断开/i.test(err)) return '本地程序启动后退出：请重新运行 install.cmd；如仍失败，查看 %LOCALAPPDATA%\\Skimlight\\data\\host.log。';
+  return '请先安装 Skimlight 本地程序。';
+}
+
 
 const send = (msg) => chrome.runtime.sendMessage(msg).catch((e) => ({ error: String(e) }));
 
@@ -47,7 +55,7 @@ async function init() {
     $('hostDot').className = 'dot off';
     $('hostStatus').textContent = '未连接到本地程序';
     $('hostHint').innerHTML = '';
-    $('hostHint').append(`${res?.error || ''} 请先安装 Skimlight 本地程序：`);
+    $('hostHint').append(`${res?.error || ''} ${hostErrorHint(res?.error)} 安装说明：`);
     const a = document.createElement('a'); a.href = INSTALL_URL; a.target = '_blank'; a.textContent = '安装说明';
     $('hostHint').append(a);
     $('form').querySelectorAll('input, button').forEach((el) => { el.disabled = true; });

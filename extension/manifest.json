@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Skimlight",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Highlights the key words of each sentence in web articles to help you skim. 在网页正文中标出每句的关键词，辅助快速阅读。",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr8NAEqxi8ypCYJcMRRC9WHZAlcO7sQ+O54G6r4n0Z47m2l/SDhGHNRPuTSpgUdJC8xhL3szY/i6OPadyx5iHzdLsyKDy+eoA6f92NWw4wfltsU60fvRU4PUa1KyW5tr5GICcUsrMUtgNvX7kZFOAnrVknG3M/azkzgf47RLOrjTzC+3khOW3B9liQbW/dPo0q0m1QYy7aLiFoMuxWPOH8CCMKxyBY7bLgUYy3bL7HewrVV3yAxKV7K13fTj+0l2rt1OqeK5murCWZm+ek0BSGCCqTwFsBYFx46myNaFB4BCX5X2o5TYhHZgm4AQm5K8feMM80bYCpLizrFrIR3emIQIDAQAB",
   "permissions": [
